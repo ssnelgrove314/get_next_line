@@ -28,43 +28,66 @@
 
 #include "get_next_line.h"
 
-//function that gets the specific t_gnlfd from the t_list fdlist
-//if no t_gnlfd, creates a new one and adds it to the list
-static t_gnlfd	get_gnlfd(const int fd, t_list **fdlist);
-
-//updates the next_line for the given fd.
-static int		ft_set_fd_line(const int fd, char **line)
+static int		lineset(const int fd, char **line)
 {
-		char	buffer[BUF_SIZE + 1];
-		char	*tmp;
-		int		ret;
+	char	buffer[BUFF_SIZE + 1];
+	char	*tmp;
+	int		ret;
 
-		if ((ret = read(fd, buffer, BUFF_SIZE)) > 0)
-		{
-			buffer[ret] = '\0';
-			tmp = *line;
-			*line = ft_strjoin(tmp, buffer);
-			ft_strdel(&tmp);
-		}
-		return (ret);
+	if ((ret = read(fd, buffer, BUFF_SIZE)) > 0)
+	{
+		buffer[ret] = '\0';
+		tmp = *line;
+		*line = ft_strjoin(tmp, buffer);
+		ft_strdel(&tmp);
+	}
+	return (ret);
 }
 
-int				get_next_line(int fd, char **line)
+static t_gnlfd	*determine_file(const int fd, t_gnlfd **master_list)
 {
-	static t_list	**fdlist;
-	t_gnlfd			*file;
-	
-	if (fd < 0 || !line)//checks for bad fd and line.
-		return (-1);
-	file = get_gnlfd(fd, &fdlist);
-	while (!ft_strchr(file->line, '\n'))
+	t_gnlfd *ptr;
+
+	ptr = *master_list;
+	while (ptr && ptr->fd != fd)
+		ptr = ptr->next;
+	if (!ptr)
 	{
-		if (ft_set_fd_line(file->fd, &file->line) < 0)
-			return (-1);
-
-		
-
+		ptr = (t_gnlfd *)ft_memalloc(sizeof(t_gnlfd));
+		ptr->fd = fd;
+		if (!(ptr->line = ft_strnew(0)))
+			return (NULL);
+		ptr->next = *master_list;
+		*master_list = ptr;
 	}
-	
-	
+	return (ptr);
+}
+
+int				get_next_line(const int fd, char **line)
+{
+	static t_gnlfd	*master_list;
+	t_gnlfd			*f;
+	char			*tmp;
+
+	if (fd < 0 || !line)
+		return (-1);
+	f = determine_file(fd, &master_list);
+	LINCHK(f->line);
+	while (!(ft_strchr(f->line, '\n')))
+	{
+		if (lineset(f->fd, &f->line) < 0)
+			return (-1);
+		if (!(lineset(f->fd, &f->line)) && (!(ft_strchr(f->line, '\n'))))
+		{
+			LINCHK(f->line[0]);
+			*line = f->line;
+			f->line = NULL;
+			return (1);
+		}
+	}
+	*line = ft_strsub(f->line, 0, (ft_strchr(f->line, '\n') - f->line));
+	tmp = f->line;
+	f->line = ft_strdup(ft_strchr(f->line, '\n') + 1);
+	ft_strdel(&tmp);
+	return (1);
 }
