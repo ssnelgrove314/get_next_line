@@ -20,12 +20,11 @@
 # include <stdlib.h>
 # include <unistd.h>
 
-typedef struct		s_gnlfd
+typedef struct      s_gnl
 {
-	int				fd;
-	char			*line_buf;
-    struct s_genlfd *next;
-}					t_gnlfd;
+    int             fd;
+    char            *storage
+}
 
 int		get_next_line(const int fd, char **line);
 

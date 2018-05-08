@@ -1,93 +1,71 @@
-/* ************************************************************************** */
-/*                                                                            */
-/*                                                        :::      ::::::::   */
-/*   get_next_line.c                                    :+:      :+:    :+:   */
-/*                                                    +:+ +:+         +:+     */
-/*   By: ssnelgro <marvin@42.fr>                    +#+  +:+       +#+        */
-/*                                                +#+#+#+#+#+   +#+           */
-/*   Created: 2018/03/22 20:37:06 by ssnelgro          #+#    #+#             */
-/*   Updated: 2018/03/25 01:48:41 by ssnelgro         ###   ########.fr       */
-/*                                                                            */
-/* ************************************************************************** */
-
-/*
-** A "line" is a succession of characters that end with '\n' (ascii code 0x0a)
-** or with End Of File (EOF)
-**
-** @Param1: file descriptor that will be used to read
-** @Param2: the address of a pointer to a character that will be used to save
-** the line read from the fd.
-** @Return: Value can be 1, 0 or -1
-** 1: line was read
-** 0: reached EOF
-** -1: something fucked up
-**
-** the line must not contain the '\n' character.
-** Call this function in a loop to read through a file one line at a time.
-*/
-
 #include "get_next_line.h"
 
-static int		lineset(const int fd, char **line)
+t_list  *gnl_determine_file(const int fd, char **line, t_list **line_list)
 {
-	char	buffer[BUFF_SIZE + 1];
-	char	*tmp;
-	int		ret;
+    t_list  *new;
 
-	if ((ret = read(fd, buffer, BUFF_SIZE)) > 0)
-	{
-		buffer[ret] = '\0';
-		tmp = *line;
-		*line = ft_strjoin(tmp, buffer);
-		ft_strdel(&tmp);
-	}
-	return (ret);
+    new = *line_list;
+    if (!(*line_list))
+        new = ft_lstappend(line_list, NULL, fd);
+    while (new && new->content_size != fd)
+        new = new->next;
+    if (!new)
+        new = ft_lstappend(line_list, NULL, (size_t)fd);
+    return (new);
 }
 
-static t_gnlfd	*determine_file(const int fd, t_gnlfd **master_list)
+char    *gnl_readline(t_list *f)
 {
-	t_gnlfd *ptr;
+    char *storage;
+    char *buffer;
+    int ret;
 
-	ptr = *master_list;
-	while (ptr && ptr->fd != fd)
-		ptr = ptr->next;
-	if (!ptr)
-	{
-		ptr = (t_gnlfd *)ft_memalloc(sizeof(t_gnlfd));
-		ptr->fd = fd;
-		if (!(ptr->line = ft_strnew(0)))
-			return (NULL);
-		ptr->next = *master_list;
-		*master_list = ptr;
-	}
-	return (ptr);
+    storage = (char *)f->content;
+    buffer = ft_strnew(BUFF_SIZE + 1);
+    ret = 0;
+    if (!storage)
+        storage = ft_strnew(0);
+    while (!ft_strchr(storage, '\n'))
+    {
+        ret = read(f->content_size, buffer, BUFF_SIZE);
+        buffer[ret] = '\0';
+        ft_strjoin(storage, buffer);
+    }
+    f->content = (void *)storage;
+    ft_strdel(&buffer);
+    return (f->content);
 }
 
-int				get_next_line(const int fd, char **line)
+char *gnl_search_storage(t_list *f)
 {
-	static t_gnlfd	*master_list;
-	t_gnlfd			*f;
-	char			*tmp;
+    char *remaining;
+    char *result;
+    int length;
 
-	if (fd < 0 || !line)
-		return (-1);
-	f = determine_file(fd, &master_list);
-	LINCHK(f->line);
-	while (!(ft_strchr(f->line, '\n')))
-	{
-		if (lineset(f->fd, &f->line) < 0)
-			return (-1);
-		if (!(lineset(f->fd, &f->line)) && (!(ft_strchr(f->line, '\n'))))
-		{
-			LINCHK(f->line[0]);
-			*line = f->line;
-			f->line = NULL;
-			return (1);
-		}
-	}
-	*line = ft_strsub(f->line, 0, (ft_strchr(f->line, '\n') - f->line));
-	tmp = f->line;
-	f->line = ft_strdup(ft_strchr(f->line, '\n') + 1);
-	ft_strdel(&tmp);
-	return (1);
+    remaining = ft_strchr((char *)f->content, '\n');
+    remaining++;
+    remaining = ft_strdup(remaining);
+    length = ft_strlen((char *)f->content) - ft_strlen(remaining);
+    ft_strlcpy(result, (char *)f->content, length);
+    ft_strdel(&(char *)f->content);
+    f->content = remaining;
+    return (result);
+}
+
+int		get_next_line(const int fd, char **line)
+{
+    static t_list   **line_list;
+    t_list          *f;
+    int             size_of_line;
+    char            *next_line;
+
+    size_of_line = 0;
+    f = gnl_determine_file(fd, line, line_list);
+    if (!ft_strchr((char *)f->content, '\n'))
+        f->content = (void *)gnl_readline(f);
+    next_line = gnl_search_storage(f);
+    size_of_line = ft_strlen(next_line);
+    write(1, next_line, size_of_line);
+    ft_strdel(&next_line);
+    return (size_of_line);
 }
