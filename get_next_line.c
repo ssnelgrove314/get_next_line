@@ -1,77 +1,65 @@
 #include "get_next_line.h"
 
-static t_gnlstrct  *gnl_determine_file(const int fd, t_gnlstrct **line_list)
+static int		lineset(const int fd, char **line)
 {
-    t_gnlstrct  *ptr;
+	char	buffer[BUFF_SIZE + 1];
+	char	*tmp;
+	int		ret;
 
-    ptr = *line_list;
-    while (ptr && ptr->fd != fd)
-        ptr = ptr->next;
-    if (!ptr)
-    {
-        ptr = (t_gnlstrct *)ft_memalloc(sizeof(t_gnlstrct));
-        ptr->fd = fd;
-        ptr->storage = ft_strnew(0);
-        ptr->next = *line_list;
-    }
-    return (ptr);
+	if ((ret = read(fd, buffer, BUFF_SIZE)) > 0)
+	{
+		buffer[ret] = '\0';
+		tmp = *line;
+		*line = ft_strjoin(tmp, buffer);
+		ft_strdel(&tmp);
+	}
+	return (ret);
 }
 
-static char    *gnl_readline(t_gnlstrct *f)
+static t_gnl	*determine_file(const int fd, t_gnl **master_list)
 {
-    char *buffer;
-    int ret;
+	t_gnl *ptr;
 
-    buffer = ft_strnew(BUFF_SIZE + 1);
-    ret = 0;
-    if (!f->storage)
-        f->storage = ft_strnew(1);
-    while (!(ft_strchr(f->storage, '\n')))
-    {
-        ret = read(f->fd, buffer, BUFF_SIZE);
-        buffer[ret] = '\0';
-        f->storage = ft_strjoin(f->storage, buffer);
-    }
-    ft_strdel(&buffer);
-    return (f->storage);
+	ptr = *master_list;
+	while (ptr && ptr->fd != fd)
+		ptr = ptr->next;
+	if (!ptr)
+	{
+		ptr = (t_gnl *)ft_memalloc(sizeof(t_gnl));
+		ptr->fd = fd;
+		if (!(ptr->storage = ft_strnew(0)))
+			return (NULL);
+		ptr->next = *master_list;
+		*master_list = ptr;
+	}
+	return (ptr);
 }
 
-static char *gnl_search_storage(t_gnlstrct *f)
+int				get_next_line(const int fd, char **line)
 {
-    char *remaining;
-    char *result;
-    int length;
+	static t_gnl	*master_list;
+	t_gnl			*f;
+	char			*tmp;
 
-    remaining = ft_strchr(f->storage, '\n');
-    if (!remaining)
-    {
-        f->storage = gnl_readline(f);
-        gnl_search_storage(f);
-    }
-    remaining++;
-    remaining = ft_strdup(remaining);
-    length = ft_strlen(f->storage) - ft_strlen(remaining);
-    result = ft_strnew(length);
-    ft_strlcpy(result, f->storage, length + 1);
-    ft_strdel(&(f->storage));
-    f->storage = remaining;
-    return (result);
-}
-
-int		get_next_line(const int fd, char **line)
-{
-    static t_gnlstrct       **file_list;
-    t_gnlstrct              *file;
-    int                     size_of_line;
-    char                    *next_line;
-
-    size_of_line = 0;
-    file = gnl_determine_file(fd, file_list);
-    if (!file->storage)
-        file->storage = gnl_readline(file);
-    next_line = gnl_search_storage(file);
-    size_of_line = ft_strlen(next_line);
-    ft_strlcpy(*line, next_line, size_of_line + 1);
-    ft_strdel(&next_line);
-    return (size_of_line);
+	if (fd < 0 || !line)
+		return (-1);
+	f = determine_file(fd, &master_list);
+	LINCHK(f->storage);
+	while (!(ft_strchr(f->storage, '\n')))
+	{
+		if (lineset(f->fd, &f->storage) < 0)
+			return (-1);
+		if (!(lineset(f->fd, &f->storage)) && (!(ft_strchr(f->storage, '\n'))))
+		{
+			LINCHK(f->storage[0]);
+			*line = f->storage;
+			f->storage = NULL;
+			return (1);
+		}
+	}
+	*line = ft_strsub(f->storage, 0, (ft_strchr(f->storage, '\n') - f->storage));
+	tmp = f->storage;
+	f->storage = ft_strdup(ft_strchr(f->storage, '\n') + 1);
+	ft_strdel(&tmp);
+	return (1);
 }

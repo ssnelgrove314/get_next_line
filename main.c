@@ -13,14 +13,8 @@ int main(int argc, char **argv)
         return (0);
     }
     fd = ft_fopen(argv[1], "r+");
-    get_next_line(fd, &str);
-    ft_putendl(str);
-    get_next_line(fd, &str);
-    ft_putendl(str);
-    get_next_line(fd, &str);
-    ft_putendl(str);
-    get_next_line(fd, &str);
-    ft_putendl(str);
+    while (get_next_line(fd, &str))
+        ft_putendl(str);
     return (0);
 /*
     for (int i = 1; i < argc; i++)

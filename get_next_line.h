@@ -19,12 +19,14 @@
 # include <stdlib.h>
 # include <unistd.h>
 
-typedef struct      s_gnlstrct
+#define LINCHK(x) if (!x) return (0);
+
+typedef struct      s_gnl
 {
     int             fd;
     char            *storage;
-    struct s_gnlstrct    *next;
-}                   t_gnlstrct;
+    struct s_gnl    *next;
+}                   t_gnl;
 
 int		get_next_line(const int fd, char **line);
 
