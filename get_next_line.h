@@ -14,17 +14,17 @@
 # define GET_NEXT_LINE_H
 
 # define BUFF_SIZE 32
-# define LINCHK(x) if (!x) return (0);
 
-# include "libft.h"
+# include "libft/libft.h"
 # include <stdlib.h>
 # include <unistd.h>
 
-typedef struct      s_gnl
+typedef struct      s_gnlstrct
 {
     int             fd;
-    char            *storage
-}
+    char            *storage;
+    struct s_gnlstrct    *next;
+}                   t_gnlstrct;
 
 int		get_next_line(const int fd, char **line);
 
