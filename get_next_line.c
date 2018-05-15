@@ -1,18 +1,20 @@
 #include "get_next_line.h"
 
-static int		lineset(const int fd, char **line)
+static int		lineset(const int fd, t_gnl *f)
 {
-	char	buffer[BUFF_SIZE + 1];
-	char	*tmp;
+	char	*buffer;
 	int		ret;
+    char    *tmp;
 
+    buffer = ft_strnew(BUFF_SIZE + 1);
 	if ((ret = read(fd, buffer, BUFF_SIZE)) > 0)
 	{
 		buffer[ret] = '\0';
-		tmp = *line;
-		*line = ft_strjoin(tmp, buffer);
-		ft_strdel(&tmp);
+        tmp = f->storage;
+		f->storage = ft_strjoin(f->storage, buffer);
+        ft_strdel(&tmp);
 	}
+    ft_strdel(&buffer);
 	return (ret);
 }
 
@@ -27,39 +29,48 @@ static t_gnl	*determine_file(const int fd, t_gnl **master_list)
 	{
 		ptr = (t_gnl *)ft_memalloc(sizeof(t_gnl));
 		ptr->fd = fd;
-		if (!(ptr->storage = ft_strnew(0)))
-			return (NULL);
+        if (!(ptr->storage = ft_strnew(0)))
+            return (NULL);
 		ptr->next = *master_list;
 		*master_list = ptr;
 	}
 	return (ptr);
 }
 
-int				get_next_line(const int fd, char **line)
+static int          set_storage_and_line(t_gnl *f, char **line)
 {
-	static t_gnl	*master_list;
-	t_gnl			*f;
-	char			*tmp;
+    int i;
+    char *tmp;
 
-	if (fd < 0 || !line)
-		return (-1);
-	f = determine_file(fd, &master_list);
-	LINCHK(f->storage);
+    i = 0;
+    tmp = NULL;
 	while (!(ft_strchr(f->storage, '\n')))
 	{
-		if (lineset(f->fd, &f->storage) < 0)
+        i = lineset(f->fd, f);
+		if (i < 0)
 			return (-1);
-		if (!(lineset(f->fd, &f->storage)) && (!(ft_strchr(f->storage, '\n'))))
+		if (!i && (!(ft_strchr(f->storage, '\n'))))
 		{
 			LINCHK(f->storage[0]);
-			*line = f->storage;
-			f->storage = NULL;
+            *line = f->storage;
 			return (1);
 		}
 	}
 	*line = ft_strsub(f->storage, 0, (ft_strchr(f->storage, '\n') - f->storage));
-	tmp = f->storage;
+    tmp = f->storage;
 	f->storage = ft_strdup(ft_strchr(f->storage, '\n') + 1);
 	ft_strdel(&tmp);
-	return (1);
+    return (1);
+}
+
+int				get_next_line(const int fd, char **line)
+{
+	static t_gnl	*master_list;
+	t_gnl			*f;
+
+	if (fd < 0 || !line)
+		return (-1);
+	f = determine_file(fd, &master_list);
+    LINCHK(f->storage);
+    return (set_storage_and_line(f, line));
 }
